@@ -20,14 +20,16 @@ public class FCM {
 		///////////////////////////////
 		// Paramter Set & Initiation //
 		///////////////////////////////
-		int c=2;							// the number of clusters
-		int n=data1.length;					// the number of elements
-		int maxite=300;						// the number of maximum iteration
-		double q=1.4;						// the fuzzifier parameter
-		int rseed=1;						// random seed
-		String dist="Euclid";				// the distance metric type
-		double F [] = new double [maxite];	// Objective function value
-
+		int c=2;											// the number of clusters
+		int n=data1.length;									// the number of elements
+		int maxtry=20;										// the number of maximum trials
+		int maxite=300;										// the number of maximum iteration
+		double q=1.4;										// the fuzzifier parameter
+		int rseed=1;										// random seed
+		String dist="Euclid";								// the distance metric type
+		double F [][] = new double [maxite][maxtry];		// Objective function value
+		double Uarc [][][] = new double [maxtry][n][c];		// Archive for membership
+		double Xctrarc [][][] = new double [maxtry][c][d];	// Archive for cluster center
 
 		// data normalization
 		double data[][] = new double[c][n];
@@ -38,39 +40,70 @@ public class FCM {
 		Sfmt rnd = new Sfmt(rseed);
 		//
 		double U [][] = new double [n][c];	// the membership function
-		for(int i=0; i<n; i++) {
-			for(int j=0; j<c; j++) {
-				U[i][j] = rnd.NextUnif();	// initiation by random number
-			}
-		}
-
 		double Xctr [][] = new double [c][d];	// the coordinate of cluster center
 
 
 		///////////////////
 //******// FCM Main Loop //********************************************************
 		///////////////////
+		for(int trial=0; trial<maxtry; trial++) {
+			for(int i=0; i<n; i++) {
+				for(int j=0; j<c; j++) {
+					U[i][j] = rnd.NextUnif();	// initiation by random number
+				}
+			}
+			for(int i=0; i<c; i++) {
+				Arrays.fill(Xctr[i],0);
+			}
 
-		for(int ite=0; ite<maxite; ite++) {
-			Xctr = CalcCtr(U,data,q);					// the cluster center update
-			U = CalcMembership(data,Xctr,q,dist);		// the membership degree updata
-			F[ite] = CalcObjFunc(U,data,Xctr,q,dist);	// Objective function update
+			for(int ite=0; ite<maxite; ite++) {
+				Xctr = CalcCtr(U,data,q);					// the cluster center update
+				U = CalcMembership(data,Xctr,q,dist);		// the membership degree updata
+				F[ite][trial] = CalcObjFunc(U,data,Xctr,q,dist);	// Objective function update
 
-			System.out.printf("Iteration: \t");
-			System.out.printf("%d\t",ite+1);
-			System.out.printf("OF Value: \t");
-			System.out.printf("%.3f\n",F[ite]);
+				System.out.printf("Iteration: \t");
+				System.out.printf("%d - %d\t",trial+1,ite+1);
+				System.out.printf("OF Value: \t");
+				System.out.printf("%.3f\n",F[ite][trial]);
+
+			}
+
+			// Data preservation for the archives
+			for(int i=0; i<n; i++) {
+				for(int j=0; j<c; j++) {
+					Uarc[trial][i][j]=U[i][j];
+				}
+			}
+			for(int i=0; i<c; i++) {
+				for(int j=0; j<d; j++) {
+					Xctrarc[trial][i][j]=Xctr[i][j];
+				}
+			}
 		}
 
 //*********************************************************************************
 
+		// Extraction of the best data
+		double Flast [] = new double [maxtry];
+		for(int i=0; i<maxtry; i++) {
+			Flast[i] = F[maxite-1][i];
+		}
+		double Fmin=9999999;
+		int Find=0;
+		for(int i=0; i<maxtry; i++) {
+			if(Flast[i] < Fmin) {
+				Find=i;
+				Fmin=Flast[i];
+			}
+		}
+
 		// Data output
 		String Ufile = "C:\\JavaIO\\Output\\U.txt";
-		DataWrite(Ufile,U);
+		DataWrite(Ufile,Uarc[Find]);
 		String Xfile = "C:\\JavaIO\\Output\\X.txt";
 		DataWrite(Xfile,data);
 		String Xctrfile = "C:\\JavaIO\\Output\\Xctr.txt";
-		DataWrite(Xctrfile,Xctr);
+		DataWrite(Xctrfile,Xctrarc[Find]);
 
 	}
 
